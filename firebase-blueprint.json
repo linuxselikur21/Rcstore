@@ -1,0 +1,271 @@
+{
+  "entities": {
+    "Category": {
+      "title": "Category",
+      "description": "Men's fashion product category in RC STORE.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "slug": { "type": "string", "minLength": 1, "maxLength": 60, "pattern": "^[a-z0-9\\-]+$" },
+        "description": { "type": "string", "maxLength": 240 },
+        "imageUrl": { "type": "string", "maxLength": 500 },
+        "displayOrder": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "slug", "description", "imageUrl", "displayOrder", "createdAt"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Men's apparel or accessory item in the RC STORE catalog.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "minLength": 2, "maxLength": 140 },
+        "slug": { "type": "string", "minLength": 2, "maxLength": 160, "pattern": "^[a-z0-9\\-]+$" },
+        "category": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "description": { "type": "string", "minLength": 5, "maxLength": 2000 },
+        "material": { "type": "string", "maxLength": 240 },
+        "price": { "type": "number" },
+        "discountPrice": { "type": "number" },
+        "stock": { "type": "number" },
+        "rating": { "type": "number" },
+        "reviewCount": { "type": "number" },
+        "sizes": { "type": "array" },
+        "colors": { "type": "array" },
+        "images": { "type": "array" },
+        "isBestSeller": { "type": "boolean" },
+        "isNewArrival": { "type": "boolean" },
+        "isSale": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "name",
+        "slug",
+        "category",
+        "description",
+        "material",
+        "price",
+        "discountPrice",
+        "stock",
+        "rating",
+        "reviewCount",
+        "sizes",
+        "colors",
+        "images",
+        "isBestSeller",
+        "isNewArrival",
+        "isSale",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Registered customer profile stored in Firestore.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "email": { "type": "string", "minLength": 3, "maxLength": 160 },
+        "phone": { "type": "string", "maxLength": 24 },
+        "address": { "type": "string", "maxLength": 400 },
+        "province": { "type": "string", "maxLength": 80 },
+        "city": { "type": "string", "maxLength": 80 },
+        "district": { "type": "string", "maxLength": 80 },
+        "postalCode": { "type": "string", "maxLength": 12 },
+        "role": { "type": "string", "enum": ["customer", "admin"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "displayName", "email", "phone", "address", "province", "city", "district", "postalCode", "role", "createdAt", "updatedAt"]
+    },
+    "CartItemDoc": {
+      "title": "CartItemDoc",
+      "description": "Authenticated user's persistent cart item in Firestore.",
+      "type": "object",
+      "properties": {
+        "productId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 140 },
+        "category": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "imageUrl": { "type": "string", "maxLength": 500 },
+        "price": { "type": "number" },
+        "discountPrice": { "type": "number" },
+        "size": { "type": "string", "minLength": 1, "maxLength": 10 },
+        "color": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "quantity": { "type": "number" },
+        "maxStock": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["productId", "name", "category", "imageUrl", "price", "discountPrice", "size", "color", "quantity", "maxStock", "updatedAt"]
+    },
+    "WishlistItemDoc": {
+      "title": "WishlistItemDoc",
+      "description": "Authenticated user's saved wishlist product in Firestore.",
+      "type": "object",
+      "properties": {
+        "productId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["productId", "createdAt"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Customer checkout order containing shipping and payment details.",
+      "type": "object",
+      "properties": {
+        "orderNumber": { "type": "string", "minLength": 4, "maxLength": 40, "pattern": "^[A-Z0-9\\-]+$" },
+        "userId": { "type": "string", "maxLength": 128 },
+        "fullName": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "whatsapp": { "type": "string", "minLength": 8, "maxLength": 24 },
+        "address": { "type": "string", "minLength": 5, "maxLength": 400 },
+        "province": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "city": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "district": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "postalCode": { "type": "string", "minLength": 5, "maxLength": 12 },
+        "notes": { "type": "string", "maxLength": 500 },
+        "shippingMethod": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "shippingCost": { "type": "number" },
+        "paymentMethod": { "type": "string", "enum": ["Transfer Bank", "QRIS", "COD"] },
+        "itemsSummary": { "type": "string", "maxLength": 400 },
+        "itemsCount": { "type": "number" },
+        "subtotal": { "type": "number" },
+        "discountAmount": { "type": "number" },
+        "totalAmount": { "type": "number" },
+        "promoCode": { "type": "string", "maxLength": 40 },
+        "status": { "type": "string", "enum": ["Pending", "Processing", "Shipped", "Completed", "Cancelled"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "orderNumber",
+        "userId",
+        "fullName",
+        "whatsapp",
+        "address",
+        "province",
+        "city",
+        "district",
+        "postalCode",
+        "notes",
+        "shippingMethod",
+        "shippingCost",
+        "paymentMethod",
+        "itemsSummary",
+        "itemsCount",
+        "subtotal",
+        "discountAmount",
+        "totalAmount",
+        "promoCode",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "OrderItem": {
+      "title": "OrderItem",
+      "description": "Individual line item inside an order.",
+      "type": "object",
+      "properties": {
+        "orderId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "orderUserId": { "type": "string", "maxLength": 128 },
+        "productId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "productName": { "type": "string", "minLength": 1, "maxLength": 140 },
+        "imageUrl": { "type": "string", "maxLength": 500 },
+        "size": { "type": "string", "minLength": 1, "maxLength": 10 },
+        "color": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "quantity": { "type": "number" },
+        "unitPrice": { "type": "number" },
+        "lineTotal": { "type": "number" }
+      },
+      "required": [
+        "orderId",
+        "orderUserId",
+        "productId",
+        "productName",
+        "imageUrl",
+        "size",
+        "color",
+        "quantity",
+        "unitPrice",
+        "lineTotal"
+      ]
+    },
+    "Subscriber": {
+      "title": "Subscriber",
+      "description": "Newsletter subscriber email.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "minLength": 5, "maxLength": 160 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "createdAt"]
+    },
+    "ContactMessage": {
+      "title": "ContactMessage",
+      "description": "Customer inquiry submitted via Contact page.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "email": { "type": "string", "minLength": 5, "maxLength": 160 },
+        "whatsapp": { "type": "string", "maxLength": 24 },
+        "subject": { "type": "string", "minLength": 2, "maxLength": 160 },
+        "message": { "type": "string", "minLength": 5, "maxLength": 1500 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "email", "whatsapp", "subject", "message", "createdAt"]
+    },
+    "AdminUser": {
+      "title": "AdminUser",
+      "description": "Registered administrator record keyed by Firebase Auth UID.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "maxLength": 160 },
+        "role": { "type": "string", "enum": ["admin"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "role", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/categories/{categoryId}": {
+      "schema": { "$ref": "#/entities/Category" },
+      "description": "Publicly readable product categories managed by admins."
+    },
+    "/products/{productId}": {
+      "schema": { "$ref": "#/entities/Product" },
+      "description": "Publicly readable men's fashion catalog managed by admins."
+    },
+    "/users/{uid}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Customer profile records isolated to owner and admins."
+    },
+    "/users/{uid}/cart/{cartItemId}": {
+      "schema": { "$ref": "#/entities/CartItemDoc" },
+      "description": "User's persistent shopping cart items in Firestore."
+    },
+    "/users/{uid}/wishlist/{productId}": {
+      "schema": { "$ref": "#/entities/WishlistItemDoc" },
+      "description": "User's persistent wishlist items in Firestore."
+    },
+    "/orders/{orderId}": {
+      "schema": { "$ref": "#/entities/Order" },
+      "description": "Customer orders; creatable during checkout, readable only by admins or order owner."
+    },
+    "/orders/{orderId}/items/{itemId}": {
+      "schema": { "$ref": "#/entities/OrderItem" },
+      "description": "Normalized line items for each order, created atomically with the parent order."
+    },
+    "/subscribers/{subscriberId}": {
+      "schema": { "$ref": "#/entities/Subscriber" },
+      "description": "Newsletter email signups; write-only for public, readable by admins."
+    },
+    "/contact_messages/{messageId}": {
+      "schema": { "$ref": "#/entities/ContactMessage" },
+      "description": "Customer inquiries; write-only for public, readable by admins."
+    },
+    "/admins/{uid}": {
+      "schema": { "$ref": "#/entities/AdminUser" },
+      "description": "Admin access registry."
+    }
+  }
+}
