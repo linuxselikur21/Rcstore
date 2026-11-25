@@ -21,7 +21,7 @@ export const AboutPage: React.FC = () => {
               Tentang RC STORE
             </p>
             <h1 className="font-display text-3xl sm:text-5xl font-bold tracking-tight text-balance leading-[1.08]">
-              Pakaian Pria Berkualitas Tinggi dengan Harga yang Tetap Masuk Akal.
+              Pakaian Pria Berkualitas Tinggi dengan Harga yang Ramah Dikantong.
             </h1>
             <p className="mt-5 text-base text-zinc-300 leading-relaxed">
               RC STORE lahir dari keyakinan sederhana: setiap pria—baik pelajar, mahasiswa, maupun
