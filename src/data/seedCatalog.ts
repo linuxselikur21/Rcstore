@@ -4,11 +4,11 @@ export const STORE_INFO = {
   name: 'RC STORE',
   tagline: 'Define Your Style, Own Your Look.',
   whatsapp: '0895364565750',
-  email: 'hello@rcstore.id',
-  instagram: '@rcstore.official',
-  tiktok: '@rcstore.id',
-  address: 'Jl. Kemang Raya No. 48, Jakarta Selatan 12730',
-  hours: 'Senin – Minggu, 09.00 – 21.00 WIB',
+  email: 'wahyu21cahyo@gmail.com',
+  instagram: 'wahyuselikur',
+  tiktok: 'wahyuselikur',
+  address: '3/2 Bonang, lasem, Rembang, Jawa Tengah, Indonesia',
+  hours: 'Senin – Minggu, 06.00 – 24.00 WIB',
   freeShippingThreshold: 500000,
 };
 
