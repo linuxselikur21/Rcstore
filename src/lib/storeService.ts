@@ -530,7 +530,72 @@ export interface CreateOrderInput {
   items: CartItem[];
 }
 
+function validateCreateOrderInput(input: CreateOrderInput): void {
+  if (input.fullName.trim().length < 2 || input.fullName.trim().length > 120) {
+    throw new Error('Nama penerima harus terdiri dari 2–120 karakter.');
+  }
+  if (!/^628[0-9]{8,14}$/.test(input.whatsapp.trim())) {
+    throw new Error('Nomor WhatsApp tidak valid. Gunakan format Indonesia, misalnya 0812... atau +62812....');
+  }
+  if (input.address.trim().length < 5 || input.address.trim().length > 400) {
+    throw new Error('Alamat pengiriman harus terdiri dari 5–400 karakter.');
+  }
+  if (input.province.trim().length < 2 || input.province.trim().length > 80) {
+    throw new Error('Provinsi pengiriman tidak valid.');
+  }
+  if (input.city.trim().length < 2 || input.city.trim().length > 80) {
+    throw new Error('Kota/kabupaten harus terdiri dari 2–80 karakter.');
+  }
+  if (input.district.trim().length < 2 || input.district.trim().length > 80) {
+    throw new Error('Kecamatan harus terdiri dari 2–80 karakter.');
+  }
+  if (!/^[0-9]{5}$/.test(input.postalCode.trim())) {
+    throw new Error('Kode pos harus terdiri dari 5 digit angka.');
+  }
+  if (input.notes.trim().length > 500) {
+    throw new Error('Catatan pesanan maksimal 500 karakter.');
+  }
+  if (!(['Transfer Bank', 'QRIS', 'COD'] as PaymentMethod[]).includes(input.paymentMethod)) {
+    throw new Error('Metode pembayaran tidak valid. Silakan pilih kembali metode pembayaran.');
+  }
+  if (input.shippingMethod.trim().length < 2 || input.shippingMethod.trim().length > 80) {
+    throw new Error('Metode pengiriman tidak valid. Silakan pilih kembali metode pengiriman.');
+  }
+  if (!Number.isFinite(input.shippingCost) || input.shippingCost < 0 || input.shippingCost > 10000000) {
+    throw new Error('Ongkos kirim tidak valid. Silakan pilih kembali metode pengiriman.');
+  }
+  if (!Number.isFinite(input.discountAmount) || input.discountAmount < 0) {
+    throw new Error('Nilai diskon tidak valid. Periksa kembali kode promo.');
+  }
+  if (input.items.length === 0 || input.items.length > 499) {
+    throw new Error('Keranjang kosong atau jumlah produk melebihi batas checkout.');
+  }
+  if (
+    input.items.some(
+      (item) =>
+        !item.productId.trim() ||
+        !item.name.trim() ||
+        !item.imageUrl.trim() ||
+        !item.size.trim() ||
+        !item.color.trim() ||
+        !Number.isInteger(item.quantity) ||
+        item.quantity < 1 ||
+        item.quantity > 100 ||
+        !Number.isFinite(getEffectivePrice(item.price, item.discountPrice)) ||
+        getEffectivePrice(item.price, item.discountPrice) <= 0 ||
+        getEffectivePrice(item.price, item.discountPrice) > 100000000
+    )
+  ) {
+    throw new Error('Ada produk di keranjang yang datanya tidak valid. Hapus lalu tambahkan kembali produk tersebut.');
+  }
+  if (input.items.reduce((count, item) => count + item.quantity, 0) > 500) {
+    throw new Error('Jumlah produk di keranjang melebihi batas checkout (500 item).');
+  }
+}
+
 export async function createOrderAtomic(input: CreateOrderInput): Promise<Order> {
+  validateCreateOrderInput(input);
+
   const orderId = makeSafeId('ord');
   const orderNumber = `RC-${new Date().toISOString().slice(2, 10).replace(/-/g, '')}-${Math.floor(
     1000 + Math.random() * 9000
@@ -545,6 +610,9 @@ export async function createOrderAtomic(input: CreateOrderInput): Promise<Order>
   const discountAmount = Math.min(subtotal, Math.max(0, Math.round(input.discountAmount)));
   const shippingCost = Math.max(0, Math.round(input.shippingCost));
   const totalAmount = Math.max(0, subtotal - discountAmount + shippingCost);
+  if (subtotal <= 0 || subtotal > 500000000 || totalAmount > 500000000) {
+    throw new Error('Total pesanan di luar batas yang dapat diproses.');
+  }
 
   const itemsSummary = input.items
     .map((i) => `${i.name} (${i.size}/${i.color}) x${i.quantity}`)

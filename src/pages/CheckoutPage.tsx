@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
   CheckCircle2,
@@ -18,6 +18,28 @@ import { buildWhatsAppUrl, formatIDR, getEffectivePrice } from '../utils/format'
 interface CheckoutLocationState {
   promoCode?: string;
   discountAmount?: number;
+}
+
+function getOrderSubmissionError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  let detail = message;
+
+  if (message.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(message) as { error?: unknown };
+      if (typeof parsed.error === 'string') detail = parsed.error;
+    } catch {
+      detail = message;
+    }
+  }
+
+  if (/permission-denied|missing or insufficient permissions/i.test(detail)) {
+    return 'Firestore menolak penyimpanan pesanan. Pastikan aturan Firestore mengizinkan pelanggan membuat pesanan.';
+  }
+  if (/unavailable|network|offline/i.test(detail)) {
+    return 'Tidak dapat terhubung ke Firebase. Periksa koneksi internet lalu coba lagi.';
+  }
+  return detail || 'Gagal membuat pesanan. Silakan coba lagi.';
 }
 
 export const CheckoutPage: React.FC = () => {
@@ -62,6 +84,7 @@ export const CheckoutPage: React.FC = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [confirmedOrder, setConfirmedOrder] = useState<Order | null>(null);
+  const submissionLock = useRef(false);
 
   useEffect(() => {
     let active = true;
@@ -104,8 +127,10 @@ export const CheckoutPage: React.FC = () => {
     [shippingOptions, selectedShippingId]
   );
 
-  const discountAmount = appliedPromo ? Math.min(cartSubtotal, appliedPromo.discountAmount) : 0;
-  const shippingCost = selectedShipping ? selectedShipping.cost : 0;
+  const discountAmount = appliedPromo
+    ? Math.min(cartSubtotal, Math.max(0, Math.round(appliedPromo.discountAmount)))
+    : 0;
+  const shippingCost = selectedShipping ? Math.max(0, Math.round(selectedShipping.cost)) : 0;
   const totalAmount = Math.max(0, cartSubtotal - discountAmount + shippingCost);
 
   const handleApplyPromo = async () => {
@@ -136,35 +161,82 @@ export const CheckoutPage: React.FC = () => {
     }
   };
 
-  const validate = (): boolean => {
+  const normalizeWhatsApp = (value: string): string => {
+    let digits = value.replace(/\D/g, '');
+    if (digits.startsWith('08')) {
+      digits = `62${digits.slice(1)}`;
+    } else if (digits.startsWith('6208')) {
+      digits = `628${digits.slice(4)}`;
+    }
+    return /^628[0-9]{8,14}$/.test(digits) ? digits : '';
+  };
+
+  const validate = (): string | null => {
     const next: Record<string, string> = {};
-    if (fullName.trim().length < 2) next.fullName = 'Nama lengkap minimal 2 karakter.';
-    if (!/^(08|\+62|62)[0-9]{8,14}$/.test(whatsapp.replace(/[\s-]/g, ''))) {
+    if (fullName.trim().length < 2 || fullName.trim().length > 120) {
+      next.fullName = 'Nama lengkap harus terdiri dari 2–120 karakter.';
+    }
+    if (!normalizeWhatsApp(whatsapp)) {
       next.whatsapp = 'Masukkan nomor WhatsApp Indonesia yang valid (contoh: 0895...).';
     }
-    if (address.trim().length < 8) next.address = 'Alamat lengkap harus diisi dengan jelas.';
-    if (!province.trim()) next.province = 'Pilih provinsi.';
-    if (city.trim().length < 2) next.city = 'Masukkan kota atau kabupaten.';
-    if (district.trim().length < 2) next.district = 'Masukkan kecamatan.';
+    if (address.trim().length < 8 || address.trim().length > 400) {
+      next.address = 'Alamat harus terdiri dari 8–400 karakter.';
+    }
+    if (!INDONESIAN_PROVINCES.includes(province)) next.province = 'Pilih provinsi yang tersedia.';
+    if (city.trim().length < 2 || city.trim().length > 80) {
+      next.city = 'Kota/kabupaten harus terdiri dari 2–80 karakter.';
+    }
+    if (district.trim().length < 2 || district.trim().length > 80) {
+      next.district = 'Kecamatan harus terdiri dari 2–80 karakter.';
+    }
     if (!/^[0-9]{5}$/.test(postalCode.trim())) next.postalCode = 'Kode pos harus 5 digit angka.';
+    if (notes.trim().length > 500) next.notes = 'Catatan pesanan maksimal 500 karakter.';
+    if (!(['Transfer Bank', 'QRIS', 'COD'] as PaymentMethod[]).includes(paymentMethod)) {
+      next.paymentMethod = 'Pilih metode pembayaran yang tersedia.';
+    }
+    if (!selectedShipping || !shippingOptions.some((option) => option.id === selectedShipping.id)) {
+      next.shipping = 'Pilih metode pengiriman yang tersedia.';
+    }
+    if (cart.length === 0 || cart.length > 499) {
+      next.cart = 'Keranjang kosong atau jumlah produk melebihi batas checkout.';
+    } else if (
+      cart.some(
+        (item) =>
+          !item.productId.trim() ||
+          !item.name.trim() ||
+          !item.imageUrl.trim() ||
+          !item.size.trim() ||
+          !item.color.trim() ||
+          !Number.isInteger(item.quantity) ||
+          item.quantity < 1 ||
+          item.quantity > 100 ||
+          !Number.isFinite(getEffectivePrice(item.price, item.discountPrice)) ||
+          getEffectivePrice(item.price, item.discountPrice) <= 0
+      ) ||
+      cart.reduce((count, item) => count + item.quantity, 0) > 500
+    ) {
+      next.cart = 'Ada produk di keranjang yang datanya tidak valid. Hapus lalu tambahkan kembali produk tersebut.';
+    }
 
     setErrors(next);
-    return Object.keys(next).length === 0;
+    return Object.values(next)[0] || null;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (cart.length === 0) return;
-    if (!validate()) {
-      showToast('Mohon periksa kembali data formulir checkout.', 'error');
+    const validationError = validate();
+    if (validationError) {
+      showToast(validationError, 'error');
       return;
     }
+    if (submissionLock.current) return;
 
+    submissionLock.current = true;
     setSubmitting(true);
     try {
       const created = await createOrderAtomic({
         fullName,
-        whatsapp: whatsapp.replace(/[\s-]/g, ''),
+        whatsapp: normalizeWhatsApp(whatsapp),
         address,
         province,
         city,
@@ -185,10 +257,11 @@ export const CheckoutPage: React.FC = () => {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
       showToast(
-        err instanceof Error ? err.message : 'Gagal membuat pesanan. Silakan coba lagi.',
+        getOrderSubmissionError(err),
         'error'
       );
     } finally {
+      submissionLock.current = false;
       setSubmitting(false);
     }
   };
@@ -229,7 +302,7 @@ export const CheckoutPage: React.FC = () => {
               <div className="text-zinc-700 space-y-1">
                 <p>Silakan transfer tepat sebesar total tagihan ke salah satu rekening resmi:</p>
                 <p className="font-mono text-xs bg-white border border-zinc-200 p-3 mt-2">
-                  BCA 5420-8812-90 a.n. PT RC STORE INDONESIA · Mandiri 1240-0098-7712-3
+                  BRI 602701001915501 a.n. WAHYU CAHYO SAPUTRO ·
                 </p>
               </div>
             )}
@@ -471,6 +544,7 @@ export const CheckoutPage: React.FC = () => {
                 placeholder="Contoh: Titip di pos satpam atau kirim sore hari"
                 className="w-full h-11 px-3.5 border border-zinc-300 text-sm focus:outline-none focus:border-zinc-950"
               />
+              {errors.notes && <p className="text-xs text-red-600 mt-1">{errors.notes}</p>}
             </div>
           </section>
 
@@ -512,6 +586,7 @@ export const CheckoutPage: React.FC = () => {
                 </label>
               ))}
             </div>
+            {errors.shipping && <p className="text-xs text-red-600">{errors.shipping}</p>}
           </section>
 
           {/* Payment Method */}
@@ -550,6 +625,9 @@ export const CheckoutPage: React.FC = () => {
                 </button>
               ))}
             </div>
+            {errors.paymentMethod && (
+              <p className="text-xs text-red-600">{errors.paymentMethod}</p>
+            )}
           </section>
         </div>
 
@@ -558,6 +636,7 @@ export const CheckoutPage: React.FC = () => {
           <h2 className="font-display text-lg font-semibold text-zinc-950 pb-3 border-b border-zinc-200">
             Ringkasan Pesanan ({cartCount} item)
           </h2>
+          {errors.cart && <p className="text-xs text-red-600">{errors.cart}</p>}
 
           <div className="divide-y divide-zinc-200 max-h-72 overflow-y-auto pr-1">
             {cart.map((item) => {
